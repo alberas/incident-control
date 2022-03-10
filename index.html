@@ -1,0 +1,208 @@
+﻿
+<html>
+    <head><title>Incident track control</title></head>
+    <body>
+        <div style="display: flex; flex-direction: row;">
+            <div id="content" style="flex: 50%;border: solid 1px lightblue;justify-content: flex-start;"></div>
+            <div style="flex:50%;padding: 15px;border: solid 1px lightblue;">
+                <label>REPORT INCIDENT:</label>
+                <input type="hidden" id="incident-id" value=""/>
+                <input type="text" id="incident-name" name="incident-name" style="width: 100%;" placeholder="Title"/>
+                <textarea id="incident-description" name="incident-description" style="height:80px; width: 100%;"></textarea>
+                <br/>
+                <div>
+                    <input type="button" id="btnCreate" value="SAVE" onclick="saveIncident()" style="float: right;"/>
+                    <input type="button" id="btnClear" value="CLEAR" onclick="clearForm()" style="float: right;"/>
+                </div>
+            </div>
+        </div>
+        <script>
+            const BASE_SERVICE_URL = "http://localhost:8080";
+
+            window.addEventListener("load", () => {
+                getAllIncidents();
+            });
+
+            const getAllIncidents = () => {
+                var reqHeaders = new Headers();
+    
+                var reqInit = { method: 'GET',   
+                   headers: reqHeaders,
+                   mode: 'cors',
+                   cache: 'default' };
+                fetch(BASE_SERVICE_URL + "/incident", reqInit)
+                .then( r => {
+                    return r.json();
+                }).then( json => {
+                    if(json.length === 0){
+                        document.getElementById("content").innerHTML = "<span>NENHUM INCIDENTE REPORTADO</span>";
+                        return;
+                    }
+                    document.getElementById("content").innerHTML = "";
+                    json.forEach( item => {
+                        createListItem(item);
+                    });
+                });
+            }
+
+            const saveIncident = () => {
+                let incidentId = document.getElementById("incident-id").value;
+                let incidentName = document.getElementById("incident-name").value;
+                let incidentDescription = document.getElementById("incident-description").value;
+                if(incidentName==="" || incidentDescription===""){
+                    alert("FILL YOUR REPORT WITH A TITLE AND DESCRIPTION");
+                }
+                
+
+                let h = new Headers();
+                h.append("Content-Type", "application/json");
+
+                fetch(BASE_SERVICE_URL + "/incident/create", { 
+                method: 'POST',   
+                headers: h,
+                mode: 'cors',
+                cache: 'default',
+                body: JSON.stringify( { 
+                        id: incidentId,
+                        name: incidentName,
+                        description: incidentDescription,
+                        createdAt: Date.now(),
+                        updatedAt: incidentId !== "" && incidentId!==null ? Date.now() : "",
+                        closedAt: ""
+                    })
+                }).then( r => {
+                    return r.json();
+                }).then( json => {
+                    clearForm();
+                    getAllIncidents();
+                });
+            };
+
+            const createListItem = (item) => {
+                let card = document.createElement("div");
+                card.appendChild(createLabel("Title:", item.name));
+                card.appendChild(createLabel("Created at:", dateFormat(item.createdAt)));
+                card.appendChild(createLabel("Update at:", dateFormat(item.updatedAt)));
+                card.appendChild(createLabel("Closed at:", dateFormat(item.closedAt)));
+                card.appendChild(createLabel("Description:", item.description));
+
+                card.style.margin = "5px";
+                card.style.padding = "5px";
+                
+                let dvButtons = document.createElement("div");
+
+                if(item.closedAt===null){
+                    let btn1 = createButton("UPDATE", () => {
+                        document.getElementById("incident-id").value = item.id;
+                        document.getElementById("incident-name").value = item.name;
+                        document.getElementById("incident-description").value = item.description;
+                    });
+                    dvButtons.appendChild(btn1);
+
+                    let btn2 = createButton("CLOSE", () => {
+                        closeIncident(item.id);
+                    });
+                    dvButtons.appendChild(btn2);
+
+                    let btn3 = createButton("REMOVE", () => {
+                        removeIncident(item.id);
+                    });
+                    dvButtons.appendChild(btn3);
+
+                }
+
+                card.appendChild(dvButtons);
+
+                document.getElementById("content").appendChild(card);
+            };
+
+            const closeIncident = (id)  => {
+                
+                let h = new Headers();
+                h.append("Content-Type", "application/json");
+
+                fetch(BASE_SERVICE_URL + "/incident/close", { 
+                method: 'PUT',   
+                headers: h,
+                mode: 'cors',
+                cache: 'default',
+                body: id 
+                }).then( r => {
+                    return r.json();
+                }).then( json => {
+                    if(json.error!==undefined && json.error!==null){
+                        alert(json.message);
+                        return;
+                    }
+                    getAllIncidents();
+                }).catch(ex => {
+                    alert(ex);
+                });             
+            };
+
+            const removeIncident = (id)  => {
+                
+                let h = new Headers();
+                h.append("Content-Type", "application/json");
+
+                fetch(BASE_SERVICE_URL + "/incident/remove", { 
+                method: 'DELETE',   
+                headers: h,
+                mode: 'cors',
+                cache: 'default',
+                body: id 
+                }).then( r => {
+                    return r.text();
+                }).then( text => {
+                    getAllIncidents();
+                }).catch(ex => {
+                    alert(ex);
+                });             
+            };
+
+            const clearForm = () => {
+                document.getElementById("incident-id").value = "";
+                document.getElementById("incident-name").value = "";
+                document.getElementById("incident-description").value = "";
+            };
+
+            const createButton = (label,action) => {
+                let btn = document.createElement("button");
+                btn.type = "button";
+                btn.innerText = label;
+                btn.addEventListener("click", (e) => {
+                    action(e);
+                });
+                return btn;
+            };
+
+            const createSpan = (innerText) => {
+                let sp1 = document.createElement("span")
+                sp1.innerText = innerText;
+                return sp1;
+            };
+
+            const createLabel = (paramName, innerText) => {
+                let container = document.createElement("div");
+                let sp1 = createSpan(paramName);
+                let sp2 = createSpan(innerText);
+                container.appendChild(sp1);
+                container.appendChild(sp2);
+                return container;
+            }
+
+            const dateFormat = (timestamp) => {
+                if(timestamp===null || timestamp===""){
+                    return "";
+                }
+                let date = new Date(timestamp);
+                return date.getDate()+
+                    "/"+(date.getMonth()+1)+
+                    "/"+date.getFullYear()+
+                    " "+date.getHours()+
+                    ":"+date.getMinutes();
+            };
+        </script>
+
+    </body>
+</html>
