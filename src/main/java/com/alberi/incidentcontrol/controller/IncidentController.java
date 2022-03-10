@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/incident")
-class IncidentController {
+public class IncidentController {
 
     @Autowired
     private IncidentRepository ir;
