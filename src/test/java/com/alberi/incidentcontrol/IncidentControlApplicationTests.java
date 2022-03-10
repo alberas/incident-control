@@ -39,7 +39,7 @@ class IncidentControlApplicationTests {
         incident.setDescription("description Teste 001");
         incident.setCreatedAt(System.currentTimeMillis());
         incidentRepo.delete(incident);
-        assertEquals(incidentRepo.findById(1).get(), null);
+        assertEquals(incidentRepo.findById(1).isPresent(), false);
     }
 
 }
